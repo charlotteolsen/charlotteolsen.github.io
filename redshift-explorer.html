@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Redshift &amp; Wavelength Explorer - CharlotteOlsen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f2f4fa;--panel:#fff;--ink:#151a33;--mut:#5a6384;--line:#d5daea;--acc:#3d5afe;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1222;--panel:#161b31;--ink:#e8ebf7;--mut:#98a1c4;--line:#283052;--acc:#8fa2ff;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0e1222;--panel:#161b31;--ink:#e8ebf7;--mut:#98a1c4;--line:#283052;--acc:#8fa2ff;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:400 16px/1.5 "Schibsted Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1000px;margin:0 auto;padding:28px 18px 40px}
+h1{font-size:clamp(28px,5vw,44px);line-height:1.05;font-weight:800;margin:0 0 8px;letter-spacing:-.02em}
+.sub{color:var(--mut);margin:0 0 24px;max-width:62ch}
+.ctl{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap}
+.zv{font-size:clamp(40px,8vw,64px);font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.03em;min-width:5.2ch}
+.zv small{font-size:.4em;font-weight:600;color:var(--mut);margin-right:6px}
+input[type=range]{flex:1;min-width:200px;accent-color:var(--acc);height:36px;cursor:pointer}
+.pre{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 18px}
+.pre button{font:inherit;font-size:14px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 14px;cursor:pointer}
+.pre button[aria-pressed=true]{background:var(--acc);border-color:var(--acc);color:var(--bg)}
+button:focus-visible,input:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+canvas{width:100%;height:540px;display:block;border-radius:10px;background:#0b0e1c}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:18px 24px;margin:22px 0 14px}
+.stats div{border-left:2px solid var(--line);padding-left:12px}
+.stats span{display:block;font-size:13px;color:var(--mut)}
+.stats b{font-size:19px;font-weight:600;font-variant-numeric:tabular-nums}
+#note{max-width:70ch;margin:0 0 10px}
+.fine{font-size:13px;color:var(--mut);max-width:70ch}
+.back{display:inline-block;margin-bottom:18px;color:var(--mut);text-decoration:none;font-size:14px}
+.back:hover{color:var(--ink)}
+@media (max-width:560px){canvas{height:570px}}
+</style>
+</head>
+<body>
+<main>
+<a class="back" href="index.html#research">&larr; Back to Research</a>
+<h1>Redshift &amp; Wavelength Explorer</h1>
+<p class="sub">A typical star-forming galaxy, from the Lyman limit to 1 µm, stretched by cosmic expansion and viewed through Rubin, Roman, Euclid, UVEX and Habitable Worlds Observatory bandpasses. Built to show what upcoming large surveys like LSST will let us see that we can&rsquo;t today &mdash; drag the slider and watch which filters catch the light.</p>
+<div class="ctl">
+  <div class="zv" aria-live="polite"><small>z =</small><span id="zv">0.00</span></div>
+  <input id="z" type="range" min="0" max="10" step="0.01" value="0" aria-label="Redshift z">
+</div>
+<div class="pre" id="pre" role="group" aria-label="Preset redshifts"></div>
+<canvas id="c" role="img" aria-label="Filter bandpasses above the observed and rest-frame galaxy spectrum on a logarithmic wavelength axis"></canvas>
+<div class="stats">
+  <div><span>Stretch factor (1 + z)</span><b id="s1"></b></div>
+  <div><span>Light left this long ago</span><b id="s2"></b></div>
+  <div><span>The 91 nm – 1 µm band arrives at</span><b id="s3"></b></div>
+  <div><span>Lyα (121.6 nm) arrives at</span><b id="s4"></b></div>
+  <div><span>Hα (656.3 nm) arrives at</span><b id="s5"></b></div>
+  <div><span>Rest UV (91–300 nm) is in Rubin</span><b id="s6"></b></div>
+  <div><span>Rest UV (91–300 nm) is in Roman</span><b id="s7"></b></div>
+  <div><span>Rest UV (91–300 nm) is in Euclid</span><b id="s8"></b></div>
+  <div><span>Rest UV (91–300 nm) is in UVEX</span><b id="s9"></b></div>
+  <div><span>Rest UV (91–300 nm) is in HWO</span><b id="s10"></b></div>
+</div>
+<p id="note"></p>
+<p class="fine">Observed wavelength = rest wavelength × (1 + z). The axis is logarithmic, so redshifting slides the spectrum sideways without changing its shape. Violet shading marks where the rest-frame UV lands; dashed, faded filters sit entirely blueward of Lyα, so they see no flux from the galaxy (drop-outs). The spectrum is an illustrative model in arbitrary f<sub>λ</sub> with exaggerated line widths and a simple intergalactic-medium absorption (Lyα forest and Lyman limit). Filter curves are smoothed top-hats built from approximate band edges, not the official throughput tables. UVEX shows its two imaging bands (FUV and NUV). HWO has no defined filter set yet, so its three bars are the notional UV, visible and near-infrared channels, with cutoffs that are still under discussion. Lookback time assumes flat ΛCDM, H₀ = 70, Ωm = 0.3.</p>
+</main>
+<script>
+const LINES=[["Lyα",121.567,1],["C IV",154.9,.25],["[O II]",372.7,.45],["Hβ",486.1,.45],["[O III]",500.7,.9],["Hα",656.3,1]];
+const R0=91.2,R1=1000,UV1=300;
+const SURV=[
+ ["Rubin","#6ec6ff",[["u",320,400],["g",400,552],["r",552,691],["i",691,818],["z",818,922],["y",950,1070]]],
+ ["Roman","#ffb86b",[["F146",927,2000,.35],["F062",480,760],["F087",760,977],["F106",927,1192],["F129",1131,1454],["F158",1380,1774],["F184",1683,2000],["F213",1950,2300]]],
+ ["Euclid","#7dffb8",[["VIS",550,920],["Y",950,1212],["J",1168,1567],["H",1521,2021]]],
+ ["UVEX","#ff7ab8",[["FUV",139,190],["NUV",203,270]]],
+ ["HWO","#ffe36e",[["UV",200,400],["VIS",400,1000],["NIR",1000,1800]]]
+];
+const ROWS=[[22,30],[58,40],[104,30],[140,30],[176,30]];
+const cv=document.getElementById('c'),ctx=cv.getContext('2d'),zs=document.getElementById('z');
+const $=id=>document.getElementById(id);
+const FONT='12px "Schibsted Grotesk",system-ui,sans-serif';
+let z=0;
+
+function col(l){
+  if(l<380)return `rgba(150,110,235,${.25+.35*Math.max(0,(l-100)/280)})`;
+  if(l>780)return `rgba(200,70,60,${Math.max(.2,.6-(l-780)/700)})`;
+  let r=0,g=0,b=0;
+  if(l<440){r=(440-l)/60;b=1}else if(l<490){g=(l-440)/50;b=1}else if(l<510){g=1;b=(510-l)/20}
+  else if(l<580){r=(l-510)/70;g=1}else if(l<645){r=1;g=(645-l)/65}else{r=1}
+  const f=l<420?.35+.65*(l-380)/40:l>700?.35+.65*(780-l)/80:1;
+  return `rgb(${r*f*255|0},${g*f*255|0},${b*f*255|0})`;
+}
+function spec(l,zz){
+  let f=l<364.6?.9*100/l:.38+.22*Math.min(1,(l-364.6)/500);
+  LINES.forEach(([n,l0,a])=>{f+=a*Math.exp(-.5*Math.pow((l-l0)/(l0*.008),2))});
+  if(zz>0){
+    if(l<121.567)f*=Math.exp(-.0036*Math.pow(1+zz,3.46));
+    if(l<91.2)f*=Math.exp(-1.5*zz);
+  }
+  return f;
+}
+function fmt(nm){return nm<1000?Math.round(nm)+" nm":(nm/1000).toFixed(nm<10000?2:1)+" µm"}
+function lookback(z){
+  if(z<=0)return 0;
+  const n=200,h=z/n,f=x=>1/((1+x)*Math.sqrt(.3*Math.pow(1+x,3)+.7));
+  let s=f(0)+f(z);
+  for(let i=1;i<n;i++)s+=f(i*h)*(i%2?4:2);
+  return 977.8/70*s*h/3;
+}
+
+function draw(){
+  const dpr=window.devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;
+  cv.width=W*dpr;cv.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);
+  const L=14,pw=W-2*L,s=1+z,LA=Math.log10(80),LS=4-LA;
+  const X=l=>L+(Math.log10(l)-LA)/LS*pw,inv=x=>Math.pow(10,LA+(x-L)/pw*LS);
+  const SH=80,OY=250,RY=380,AX=RY+SH+46;
+  ctx.fillStyle='#0b0e1c';ctx.fillRect(0,0,W,H);
+  ctx.textBaseline='middle';ctx.font=FONT;
+
+  // visible-light and rest-UV shading
+  ctx.fillStyle='rgba(255,255,255,.05)';ctx.fillRect(X(380),0,X(750)-X(380),AX);
+  const ux=Math.max(L,X(R0*s)),ue=Math.min(L+pw,X(UV1*s));
+  if(ue>ux){
+    ctx.fillStyle='rgba(160,120,255,.16)';ctx.fillRect(ux,0,ue-ux,OY+SH);
+    ctx.fillStyle='#c9b6ff';ctx.textAlign='left';ctx.fillText('rest-frame UV',Math.min(ux+4,W-86),9);
+  }
+
+  // filters
+  SURV.forEach(([nm,c,fl],ri)=>{
+    const [y0,h]=ROWS[ri],base=y0+h;
+    ctx.fillStyle=c;ctx.textAlign='left';ctx.fillText(nm,L,y0+8);
+    fl.forEach(([n,lo,hi,hs=1])=>{
+      const uv=lo<UV1*s&&hi>R0*s,drop=hi<121.567*s;
+      const xa=Math.max(L,X(lo)-12),xb=Math.min(L+pw,X(hi)+12);
+      if(xb<=xa)return;
+      ctx.beginPath();ctx.moveTo(xa,base);
+      for(let x=xa;x<=xb;x+=1.5){
+        const a=Math.log10(inv(x));
+        const t=.9*hs/(1+Math.exp(-(a-Math.log10(lo))/.005))/(1+Math.exp((a-Math.log10(hi))/.005));
+        ctx.lineTo(x,base-t*(h-6));
+      }
+      ctx.lineTo(xb,base);ctx.closePath();
+      ctx.globalAlpha=drop?.08:uv?.7:.28;ctx.fillStyle=c;ctx.fill();
+      ctx.globalAlpha=drop?.5:1;ctx.strokeStyle=c;ctx.lineWidth=uv&&!drop?1.8:1;
+      ctx.setLineDash(drop?[3,3]:[]);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;
+      const xm=X(Math.sqrt(lo*hi));
+      if(X(hi)-X(lo)>24&&xm>L+10&&xm<L+pw-10){
+        ctx.fillStyle=drop?'rgba(255,255,255,.4)':'#fff';ctx.textAlign='center';
+        ctx.fillText(n,xm,hs<1?base-5:base-(h-6)/2);
+      }
+    });
+  });
+
+  // spectra: bar height = flux, colour = rest wavelength
+  const panel=(top,k,zz)=>{
+    const a=Math.max(L,X(R0*k)),b=Math.min(L+pw,X(R1*k));
+    for(let x=Math.floor(a);x<b;x++){
+      const lr=inv(x)/k,f=Math.min(1,spec(lr,zz)/1.5);
+      ctx.fillStyle=col(lr);ctx.fillRect(x,top+SH*(1-f),1.6,SH*f);
+    }
+    ctx.strokeStyle='rgba(255,255,255,.25)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(L,top+SH+.5);ctx.lineTo(L+pw,top+SH+.5);ctx.stroke();
+  };
+  panel(OY,s,z);panel(RY,1,0);
+
+  // lines and connectors
+  LINES.forEach(([n,l],i)=>{
+    const xo=X(l*s),xr=X(l),lane=i%2;
+    if(l*s<=10000){
+      ctx.strokeStyle='rgba(255,255,255,.16)';ctx.lineWidth=1;ctx.setLineDash([3,4]);
+      ctx.beginPath();ctx.moveTo(xo,OY+SH);ctx.lineTo(xr,RY);ctx.stroke();ctx.setLineDash([]);
+      ctx.strokeStyle='rgba(255,255,255,.8)';
+      ctx.beginPath();ctx.moveTo(xo,OY-6);ctx.lineTo(xo,OY+SH);ctx.stroke();
+      ctx.fillStyle='#fff';ctx.textAlign='center';
+      ctx.fillText(n,Math.min(W-22,Math.max(22,xo)),OY-14-lane*14);
+    }
+    ctx.strokeStyle='rgba(255,255,255,.8)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(xr,RY);ctx.lineTo(xr,RY+SH+5);ctx.stroke();
+    ctx.fillStyle='#fff';ctx.textAlign='center';
+    ctx.fillText(n,Math.min(W-22,Math.max(22,xr)),RY+SH+17+lane*14);
+  });
+  ctx.fillStyle='#aab3dc';ctx.textAlign='left';
+  ctx.fillText('Observed, z = '+z.toFixed(2),L,OY+SH+16);
+  ctx.fillText('Emitted (rest frame)',L,RY-12);
+
+  // axis
+  ctx.strokeStyle='rgba(255,255,255,.35)';
+  ctx.beginPath();ctx.moveTo(L,AX);ctx.lineTo(L+pw,AX);ctx.stroke();
+  [[100,'100 nm'],[200,'200 nm'],[500,'500 nm'],[1000,'1 µm'],[2000,'2 µm'],[5000,'5 µm'],[10000,'10 µm']].forEach(([l,t])=>{
+    const x=X(l);ctx.beginPath();ctx.moveTo(x,AX);ctx.lineTo(x,AX+5);ctx.stroke();
+    ctx.fillStyle='#aab3dc';ctx.textAlign=l===10000?'right':'center';ctx.fillText(t,x,AX+18);
+  });
+  ctx.fillStyle='rgba(255,255,255,.45)';ctx.textAlign='center';
+  ctx.fillText('visible',X(Math.sqrt(380*750)),AX-9);
+}
+
+function update(){
+  const s=1+z,ha=656.3*s,ly=121.567*s;
+  $('zv').textContent=z.toFixed(2);
+  $('s1').textContent='×'+s.toFixed(2);
+  const lb=lookback(z);
+  $('s2').textContent=z<0.005?'Today':(lb<1?(lb*1000).toFixed(0)+' million years':lb.toFixed(1)+' billion years');
+  $('s3').textContent=fmt(R0*s)+' – '+fmt(R1*s);
+  $('s4').textContent=fmt(ly);
+  $('s5').textContent=fmt(ha);
+  SURV.forEach(([nm,c,fl],i)=>{
+    const r=fl.filter(([n,lo,hi])=>lo<UV1*s&&hi>R0*s&&hi>=121.567*s).map(f=>f[0]);
+    $('s'+(6+i)).textContent=r.length?r.join(', '):'none: it has left the bandpasses';
+  });
+  let n;
+  if(ha<=750)n='Hα is still in visible light.';
+  else if(ha<=2500)n='Hα has moved into the near-infrared, where infrared cameras on ground telescopes can still reach it.';
+  else if(ha<=5000)n='Hα has moved past the near-infrared bands. JWST’s NIRCam (0.6–5 µm) can still catch it.';
+  else n='Hα now arrives beyond 5 µm. Only JWST’s mid-infrared instrument, MIRI, can observe it.';
+  if(ly>=380&&ly<=750)n+=' Lyα has entered the visible band, which is how ground-based surveys find galaxies at z above 2.';
+  else if(ly>750)n+=' Lyα is now an infrared line.';
+  $('note').textContent=n;
+  document.querySelectorAll('#pre button').forEach(b=>b.setAttribute('aria-pressed',Math.abs(+b.dataset.z-z)<.005));
+  draw();
+}
+
+[0,0.5,1,2,3,6,10].forEach(v=>{
+  const b=document.createElement('button');b.textContent='z = '+v;b.dataset.z=v;
+  b.onclick=()=>{z=v;zs.value=v;update()};$('pre').appendChild(b);
+});
+zs.addEventListener('input',()=>{z=+zs.value;update()});
+window.addEventListener('resize',draw);
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(draw);
+update();
+</script>
+</body>
+</html>
